@@ -27,22 +27,15 @@ Director {                            # define myself
   StatisticsRetention = 5y
 }
 
-# Restricted console used by tray-monitor to get the status of the director
-Console {
-  Name = bacula-mon
-  Password = "UCyA6l1ABzL2osyuKyCNGNGPl2HQT/Fat+P3pZcfsKlP"
-  CommandACL = status, .status
-}
-
 JobDefs {
   Name = "DefaultJobIncremental"
   Type = "Backup"
   Level = "Incremental"
-  FileSet = "FS-full"
+  FileSet = "Full Set"
   Schedule = "WeeklyCycle"
   Storage = "File11"
   Messages = "Standard"
-  Pool = "IncrementalBKP"
+  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10"
   Write Bootstrap = "/opt/bacula/working/%c.bsr"
@@ -54,11 +47,11 @@ JobDefs {
   Name = "DefaultJobDifferential"
   Type = "Backup"
   Level = "Differential"
-  FileSet = "FS-full"
+  FileSet = "Full Set"
   Schedule = "WeeklyCycle"
   Storage = "File12"
   Messages = "Standard"
-  Pool = "DifferentialBKP"
+  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10" 
   Write Bootstrap = "/opt/bacula/working/%c.bsr"
@@ -70,11 +63,11 @@ JobDefs {
   Name = "DefaultJobFull"
   Type = "Backup"
   Level = "Full"
-  FileSet = "FS-full"
+  FileSet = "Full Set"
   Schedule = "WeeklyCycle"
   Storage = "File13"
   Messages = "Standard"
-  Pool = "FullBKP"
+  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10"
   Write Bootstrap = "/opt/bacula/working/%c.bsr"
@@ -82,46 +75,54 @@ JobDefs {
   Accurate = "yes"
 }
 
+#
 # Define the main nightly save backup job
 #   By default, this job will back up to disk in /tmp
 Job {
   JobDefs = "DefaultJobFull"
-  Name = "baculac-fdF"
+  Name = "wildfly-Ffd"
   Enabled = "yes"
+  Messages = "Daemon"
   Client = "baculac-fd"
 }
 
 Job {
   JobDefs = "DefaultJobDifferential"
-  Name = "baculac-fdD"
+  Name = "wildfly-Dfd"
   Enabled = "yes"
+  Messages = "Daemon"
   Client = "baculac-fd"
 }
 
 Job {
   JobDefs = "DefaultJobIncremental"
-  Name = "baculac-fdI"
+  Name = "wildfly-Ifd"
   Enabled = "yes"
+  Messages = "Daemon"
   Client = "baculac-fd"
 }
 
-# Standard Restore template, to be changed by Console program
-#  Only one such job is needed for all Jobs/Clients/Storage ...
-Job {
-  Name = "RestoreFiles"
-  Type = "Restore"
-  Client = "baculac-fd"
-  Storage = "File11"
-  FileSet = "FS-full" # The FileSet directives are not used by Restore Jobs, but must not be removed
-  Pool = "File"        # The FileSet directives are not used by Restore Jobs, but must not be removed
-  Messages = "Standard"
-  Where = "/tmp/bacula-restores"
-  Replace = "always"
-}
-
-# by Renato Job {
-#  Name = "BackupCatalog"
+#Job {
+#  Name = "BackupClient2"
+#  Client = bacula2-fd
 #  JobDefs = "DefaultJobIncremental"
+#}
+
+#Job {
+#  Name = "BackupClient1-to-Tape"
+#  JobDefs = "DefaultJobIncremental"
+#  Storage = LTO-4
+#  Spool Data = yes    # Avoid shoe-shine
+#  Pool = Default
+#}
+
+#}
+
+# Backup the catalog database (after the nightly save)
+# by Renato Job {
+##  Name = "BackupCatalog"
+##  JobDefs = "DefaultJobIncremental"
+##  Level = Full
 #  FileSet="Catalog"
 #  Schedule = "WeeklyCycleAfterBackup"
 #  # This creates an ASCII copy of the catalog
@@ -134,18 +135,52 @@ Job {
 #  Priority = 11                   # run after main backup
 #}
 
+#
+# Standard Restore template, to be changed by Console program
+#  Only one such job is needed for all Jobs/Clients/Storage ...
+#
+Job {
+  Name = "RestoreFiles"
+  Type = Restore
+  Client=baculac-fd
+  Storage = File11
+# The FileSet and Pool directives are not used by Restore Jobs
+# but must not be removed
+  FileSet="Full Set"
+  Pool = File
+  Messages = Standard
+  Where = /tmp/bacula-restores
+}
+
+
 # List of files to be backed up
-# df -l | grep "^/dev/sd[ab]" | grep -v ".*/tmp" | awk '{print $6}'
 FileSet {
-  Name = "FS-full"
+  Name = "Full Set"
   Include {
     Options {
       signature = MD5
-      compression = GZIP
     }
-    File = /
-    File = /boot
+#
+#  Put your list of files here, preceded by 'File =', one per line
+#    or include an external list with:
+#
+#    File = <file-name
+#
+#  Note: / backs up everything on the root partition.
+#    if you have other partitions such as /usr or /home
+#    you will probably want to add them too.
+#
+#  By default this is defined to point to the Bacula binary
+#    directory to give a reasonable FileSet to backup to
+#    disk storage during initial testing.
+#
+    File = /opt/bacula/bin
   }
+
+#
+# If you backup the root directory, the following two excluded
+#   files can be useful
+#
   Exclude {
     File = /opt/bacula/working
     File = /tmp
@@ -157,18 +192,7 @@ FileSet {
   }
 }
 
-# This is the backup of the catalog
-FileSet {
-  Name = "Catalog"
-  Include {
-    Options {
-      signature = MD5
-      compression = GZIP
-    }
-    File = "/opt/bacula/working/bacula.sql"
-  }
-}
-
+#
 # When to do the backups, full backup on first sunday of the month,
 #  differential (i.e. incremental since full) every other sunday,
 #  and incremental backups other days
@@ -185,6 +209,17 @@ Schedule {
   Run = Full sun-sat at 23:10
 }
 
+# This is the backup of the catalog
+FileSet {
+  Name = "Catalog"
+  Include {
+    Options {
+      signature = MD5
+    }
+    File = "/opt/bacula/working/bacula.sql"
+  }
+}
+
 # Client (File Services) to backup
 Client {
   Name = baculac-fd
@@ -196,6 +231,22 @@ Client {
   Job Retention = 6 months            # six months
   AutoPrune = yes                     # Prune expired Jobs/Files
 }
+
+#
+# Second Client (File Services) to backup
+#  You should change Name, Address, and Password before using
+#
+#Client {
+#  Name = bacula2-fd
+#  Address = bacula2
+#  FDPort = 9102
+#  Catalog = MyCatalog
+#  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF2"        # password for FileDaemon 2
+#  File Retention = 60 days           # 60 days
+#  Job Retention = 6 months           # six months
+#  AutoPrune = yes                    # Prune expired Jobs/Files
+#}
+
 
 # Definition of file Virtual Autochanger device
 Autochanger {
@@ -246,10 +297,64 @@ Autochanger {
   Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
 }
 
+# Definition of LTO-4 tape Autochanger device
+#Autochanger {
+#  Name = LTO-4
+#  Do not use "localhost" here
+#  Address = 192.168.56.57              # N.B. Use a fully qualified name here
+#  SDPort = 9103
+#  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"         # password for Storage daemon
+#  Device = LTO-4                     # must be same as Device in Storage daemon
+#  Media Type = LTO-4                 # must be same as MediaType in Storage daemon
+#  Autochanger = LTO-4                # enable for autochanger device
+#  Maximum Concurrent Jobs = 10
+#}
+
 # Generic catalog service
 Catalog {
   Name = MyCatalog
   dbname = "bacula"; dbuser = "bacula"; dbpassword = ""
+}
+
+# Reasonable message delivery -- send most everything to email address
+#  and to the console
+Messages {
+  Name = Standard
+#
+# NOTE! If you send to two email or more email addresses, you will need
+#  to replace the %r in the from field (-f part) with a single valid
+#  email address in both the mailcommand and the operatorcommand.
+#  What this does is, it sets the email address that emails would display
+#  in the FROM field, which is by default the same email as they're being
+#  sent to.  However, if you send email to more than one address, then
+#  you'll have to set the FROM address manually, to a single address.
+#  for example, a 'no-reply@mydomain.com', is better since that tends to
+#  tell (most) people that its coming from an automated source.
+
+#
+  mailcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: %t %e of %c %l\" %r"
+  operatorcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: Intervention needed for %j\" %r"
+  mail = root@localhost = all, !skipped
+  operator = root@localhost = mount
+  console = all, !skipped, !saved
+#
+# WARNING! the following will create a file that you must cycle from
+#          time to time as it will grow indefinitely. However, it will
+#          also keep all your messages if they scroll off the console.
+#
+  append = "/opt/bacula/log/bacula.log" = all, !skipped
+  catalog = all
+}
+
+
+#
+# Message delivery for daemon messages (no job).
+Messages {
+  Name = Daemon
+  mailcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula daemon message\" %r"
+  mail = root@localhost = all, !skipped
+  console = all, !skipped, !saved
+  append = "/opt/bacula/log/bacula.log" = all, !skipped
 }
 
 # Default pool definition
@@ -275,6 +380,7 @@ Pool {
   Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
   Maximum Volumes = 100               # Limit number of Volumes in Pool
 }
+
 
 Pool {
   Name = FullBKP
@@ -316,42 +422,11 @@ Pool {
   Label Format = "Local-"
 }
 
-# Reasonable message delivery -- send most everything to email address
-#  and to the console
-Messages {
-  Name = Standard
 #
-# NOTE! If you send to two email or more email addresses, you will need
-#  to replace the %r in the from field (-f part) with a single valid
-#  email address in both the mailcommand and the operatorcommand.
-#  What this does is, it sets the email address that emails would display
-#  in the FROM field, which is by default the same email as they're being
-#  sent to.  However, if you send email to more than one address, then
-#  you'll have to set the FROM address manually, to a single address.
-#  for example, a 'no-reply@mydomain.com', is better since that tends to
-#  tell (most) people that its coming from an automated source.
+# Restricted console used by tray-monitor to get the status of the director
 #
-  mailcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: %t %e of %c %l\" %r"
-  operatorcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: Intervention needed for %j\" %r"
-  mail = root@localhost = all, !skipped
-  operator = root@localhost = mount
-  console = all, !skipped, !saved
-#
-# WARNING! the following will create a file that you must cycle from
-#          time to time as it will grow indefinitely. However, it will
-#          also keep all your messages if they scroll off the console.
-#
-  append = "/opt/bacula/log/bacula.log" = all, !skipped
-  catalog = all
+Console {
+  Name = bacula-mon
+  Password = "UCyA6l1ABzL2osyuKyCNGNGPl2HQT/Fat+P3pZcfsKlP"
+  CommandACL = status, .status
 }
-
-# Message delivery for daemon messages (no job).
-Messages {
-  Name = Daemon
-  mailcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula daemon message\" %r"
-  mail = root@localhost = all, !skipped
-  console = all, !skipped, !saved
-  append = "/opt/bacula/log/bacula.log" = all, !skipped
-}
-
-@|"find /etc/bacula/conf.d -name '*.conf' -type f -exec echo @{} \;"
