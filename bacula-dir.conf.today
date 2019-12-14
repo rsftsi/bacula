@@ -27,186 +27,148 @@ Director {                            # define myself
   StatisticsRetention = 5y
 }
 
+# Restricted console used by tray-monitor to get the status of the director
+Console {
+  Name = bacula-mon
+  Password = "UCyA6l1ABzL2osyuKyCNGNGPl2HQT/Fat+P3pZcfsKlP"
+  CommandACL = status, .status
+}
+
 JobDefs {
-  Name = "DefaultJobIncremental"
+  Name = "JD-storage13"
   Type = "Backup"
-  Level = "Incremental"
-  FileSet = "Full Set"
-  Schedule = "WeeklyCycle"
-  Storage = "File11"
+  FileSet = "FS-full"
   Messages = "Standard"
-  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10"
-  Write Bootstrap = "/opt/bacula/working/%c.bsr"
-  IncrementalBackupPool = "IncrementalBKP"
   Accurate = "yes"
 }
 
 JobDefs {
-  Name = "DefaultJobDifferential"
+  Name = "JD-storage12"
   Type = "Backup"
-  Level = "Differential"
-  FileSet = "Full Set"
+  FileSet = "FS-full"
   Schedule = "WeeklyCycle"
-  Storage = "File12"
   Messages = "Standard"
-  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10" 
-  Write Bootstrap = "/opt/bacula/working/%c.bsr"
-  DifferentialBackupPool = "DifferentialBKP"
   Accurate = "yes"
 }
 
 JobDefs {
-  Name = "DefaultJobFull"
+  Name = "JD-storage11"
   Type = "Backup"
-  Level = "Full"
-  FileSet = "Full Set"
+  FileSet = "FS-full"
   Schedule = "WeeklyCycle"
-  Storage = "File13"
   Messages = "Standard"
-  Pool = "File"
   SpoolAttributes = "yes"
   Priority = "10"
-  Write Bootstrap = "/opt/bacula/working/%c.bsr"
-  FullBackupPool = "FullBKP"
   Accurate = "yes"
 }
 
-#
 # Define the main nightly save backup job
 #   By default, this job will back up to disk in /tmp
 Job {
-  JobDefs = "DefaultJobFull"
-  Name = "wildfly-Ffd"
+  JobDefs = "JD-storage13"
+  Name = "baculac-fdF"
+  Schedule = "WeeklyCycle"
   Enabled = "yes"
-  Messages = "Daemon"
   Client = "baculac-fd"
+  Pool = "Default"
+  FullBackupPool = "Pool-00-File11"
+  DifferentialBackupPool = "Pool-01-File11"
+  IncrementalBackupPool = "Pool-02-File11"
+  Storage = AC-File11
 }
 
 Job {
-  JobDefs = "DefaultJobDifferential"
-  Name = "wildfly-Dfd"
+  JobDefs = "JD-storage12"
+  Name = "baculac-fdD"
+  Schedule = "WeeklyCycle"
   Enabled = "yes"
-  Messages = "Daemon"
   Client = "baculac-fd"
+  Pool = "Default"
+  FullBackupPool = "Pool-00-File11"
+  DifferentialBackupPool = "Pool-01-File11"
+  IncrementalBackupPool = "Pool-02-File11"
+  Storage = "AC-FileGr1-Dev1" 
 }
 
 Job {
-  JobDefs = "DefaultJobIncremental"
-  Name = "wildfly-Ifd"
+  JobDefs = "JD-storage11"
+  Name = "baculac-fdI"
+  Schedule = "WeeklyCycle"
   Enabled = "yes"
-  Messages = "Daemon"
   Client = "baculac-fd"
+  Pool = "Default"
+  FullBackupPool = "Pool-00-File11"
+  DifferentialBackupPool = "Pool-01-File11"
+  IncrementalBackupPool = "Pool-02-File11"
+  Storage = "AC-FileGr1-Dev1" 
 }
 
-#Job {
-#  Name = "BackupClient2"
-#  Client = bacula2-fd
-#  JobDefs = "DefaultJobIncremental"
-#}
+Job {
+  JobDefs = "JD-storage13"
+  Name = "BackupCatalog"
+  Client = "bacula-dir"
+  FileSet = "Catalog"
+  Schedule = "WeeklyCycleAfterBackup"
+  Pool = "Default"
+  FullBackupPool = "Pool-00-File11"
+  # This creates an ASCII copy of the catalog
+  # Arguments to make_catalog_backup.pl are:
+  #  make_catalog_backup.pl <catalog-name>
+  RunBeforeJob = "/opt/bacula/scripts/make_catalog_backup.pl MyCatalog bacula 1"
+  # This deletes the copy of the catalog
+  RunAfterJob  = "/opt/bacula/scripts/delete_catalog_backup"
+  Write Bootstrap = "/opt/bacula/working/%c_%n.bsr"
+  Priority = 11                   # run after main backup
+}
 
-#Job {
-#  Name = "BackupClient1-to-Tape"
-#  JobDefs = "DefaultJobIncremental"
-#  Storage = LTO-4
-#  Spool Data = yes    # Avoid shoe-shine
-#  Pool = Default
-#}
+Job {
+  Name = "bacula-dirVerify"
+  Type = "Verify"
+  Client = "bacula-dirVerify"
+  FileSet = "FS-Verify"
+  Messages = "Standard"
+  Pool = "Default"
+  FullBackupPool = "Pool-00-File11"
+  Schedule = "VerifyCycle"
+}
 
-#}
-
-# Backup the catalog database (after the nightly save)
-# by Renato Job {
-##  Name = "BackupCatalog"
-##  JobDefs = "DefaultJobIncremental"
-##  Level = Full
-#  FileSet="Catalog"
-#  Schedule = "WeeklyCycleAfterBackup"
-#  # This creates an ASCII copy of the catalog
-#  # Arguments to make_catalog_backup.pl are:
-#  #  make_catalog_backup.pl <catalog-name>
-#  RunBeforeJob = "/opt/bacula/scripts/make_catalog_backup.pl MyCatalog"
-#  # This deletes the copy of the catalog
-#  RunAfterJob  = "/opt/bacula/scripts/delete_catalog_backup"
-#  Write Bootstrap = "/opt/bacula/working/%n.bsr"
-#  Priority = 11                   # run after main backup
-#}
-
-#
 # Standard Restore template, to be changed by Console program
 #  Only one such job is needed for all Jobs/Clients/Storage ...
-#
 Job {
   Name = "RestoreFiles"
-  Type = Restore
-  Client=baculac-fd
-  Storage = File11
-# The FileSet and Pool directives are not used by Restore Jobs
-# but must not be removed
-  FileSet="Full Set"
-  Pool = File
-  Messages = Standard
-  Where = /tmp/bacula-restores
+  Type = "Restore"
+  Client = "baculac-fd"
+  FileSet = "FS-full"     # The FileSet directives are not used by Restore Jobs, but must not be removed
+  Pool = "Default"        # The FileSet directives are not used by Restore Jobs, but must not be removed
+  Messages = "Standard"
+  Where = "/tmp/bacula-restores"
 }
-
 
 # List of files to be backed up
+# df -l | grep "^/dev/sd[ab]" | grep -v ".*/tmp" | awk '{print $6}'
 FileSet {
-  Name = "Full Set"
+  Name = "FS-full"
   Include {
     Options {
-      signature = MD5
+      signature = "MD5"
+      compression = "GZIP"
     }
-#
-#  Put your list of files here, preceded by 'File =', one per line
-#    or include an external list with:
-#
-#    File = <file-name
-#
-#  Note: / backs up everything on the root partition.
-#    if you have other partitions such as /usr or /home
-#    you will probably want to add them too.
-#
-#  By default this is defined to point to the Bacula binary
-#    directory to give a reasonable FileSet to backup to
-#    disk storage during initial testing.
-#
-    File = /opt/bacula/bin
+    File = "/etc"
+    File = "/boot"
   }
-
-#
-# If you backup the root directory, the following two excluded
-#   files can be useful
-#
   Exclude {
-    File = /opt/bacula/working
-    File = /tmp
-    File = /proc
-    File = /tmp
-    File = /sys
-    File = /.journal
-    File = /.fsck
+    File = "/opt/bacula/working"
+    File = "/tmp"
+    File = "/proc"
+    File = "/tmp"
+    File = "/sys"
+    File = "/.journal"
+    File = "/.fsck"
   }
-}
-
-#
-# When to do the backups, full backup on first sunday of the month,
-#  differential (i.e. incremental since full) every other sunday,
-#  and incremental backups other days
-Schedule {
-  Name = "WeeklyCycle"
-  Run = Full 1st sun at 21:30
-  Run = Differential 2nd-5th sun at 21:30
-  Run = Incremental mon-sat at 21:30
-}
-
-# This schedule does the catalog. It starts after the WeeklyCycle
-Schedule {
-  Name = "WeeklyCycleAfterBackup"
-  Run = Full sun-sat at 23:10
 }
 
 # This is the backup of the catalog
@@ -214,112 +176,190 @@ FileSet {
   Name = "Catalog"
   Include {
     Options {
-      signature = MD5
+      signature = "MD5"
+      compression = "GZIP"
     }
-    File = "/opt/bacula/working/bacula.sql"
+    File = "/opt/bacula/working/%c_%n.bsr"
   }
+  Exclude {
+  }
+}
+
+FileSet {
+  Name = "FS-Verify"
+  Include {
+    Options {
+      verify = "pins1"
+      signature = "SHA1"
+    }
+    File = "/boot"
+    File = "/bin"
+    File = "/sbin"
+    File = "/usr/bin"
+    File = "/lib"
+    File = "/root/.ssh"
+    File = "/home/kern/.ssh"
+    File = "/var/named"
+    File = "/etc/sysconfig"
+    File = "/etc/ssh"
+    File = "/etc/security"
+    File = "/etc/exports"
+    File = "/etc/rc.d/init.d"
+    File = "/etc/sendmail.cf"
+    File = "/etc/sysctl.conf"
+    File = "/etc/services"
+    File = "/etc/xinetd.d"
+    File = "/etc/hosts.allow"
+    File = "/etc/hosts.deny"
+    File = "/etc/hosts"
+    File = "/etc/modules.conf"
+    File = "/etc/named.conf"
+    File = "/etc/pam.d"
+    File = "/etc/resolv.conf"
+  }
+  Exclude { 
+  }
+}
+
+# When to do the backups, full backup on first sunday of the month,
+#  differential (i.e. incremental since full) every other sunday,
+#  and incremental backups other days
+Schedule {
+  Name = "WeeklyCycle"
+  Run = Level = Full 1st sun at 14:20
+  Run = Level = Differential 2nd-5th sun at 14:20
+  Run = Level = Incremental mon-sat at 14:20
+}
+
+# This schedule does the catalog. It starts after the WeeklyCycle
+Schedule {
+  Name = "WeeklyCycleAfterBackup"
+  Run = Level = Full sun-sat at 14:25
+}
+
+Schedule {
+Name = "VerifyCycle"
+Run = Level = Catalog sun-sat at 21:05
 }
 
 # Client (File Services) to backup
 Client {
-  Name = baculac-fd
-  Address = 192.168.56.58
-  FDPort = 9102
-  Catalog = MyCatalog
+  Name = "baculac-fd"
+  Address = "192.168.56.58"
+  FDPort = "9102"
+  Catalog = "MyCatalog"
   Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF"          # password for FileDaemon
   File Retention = 60 days            # 60 days
   Job Retention = 6 months            # six months
-  AutoPrune = yes                     # Prune expired Jobs/Files
+  AutoPrune = "yes"                     # Prune expired Jobs/Files
 }
 
-#
-# Second Client (File Services) to backup
-#  You should change Name, Address, and Password before using
-#
-#Client {
-#  Name = bacula2-fd
-#  Address = bacula2
-#  FDPort = 9102
-#  Catalog = MyCatalog
-#  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF2"        # password for FileDaemon 2
-#  File Retention = 60 days           # 60 days
-#  Job Retention = 6 months           # six months
-#  AutoPrune = yes                    # Prune expired Jobs/Files
-#}
-
-
-# Definition of file Virtual Autochanger device
-Autochanger {
-  Name = File11
-# Do not use "localhost" here
-  Address = 192.168.56.57               # N.B. Use a fully qualified name here
-  SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
-  Device = FileChgr1
-  Media Type = File11
-  Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
-  Autochanger = File11                 # point to ourself
+Client {
+  Name = "bacula-dir"
+  Address = "192.168.56.57"
+  FDPort = "9102"
+  Catalog = "MyCatalog"
+  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF"          # password for FileDaemon
+  File Retention = 60 days            # 60 days
+  Job Retention = 6 months            # six months
+  AutoPrune = "yes"                     # Prune expired Jobs/Files
 }
 
-# Definition of a second file Virtual Autochanger device
-#   Possibly pointing to a different disk drive
-Autochanger {
-  Name = File2
-# Do not use "localhost" here
-  Address = 192.168.56.57               # N.B. Use a fully qualified name here
-  SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
-  Device = FileChgr2
-  Media Type = File2
-  Autochanger = File2                 # point to ourself
-  Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
+Client {
+  Name = "bacula-dirVerify"
+  Address = "192.168.56.57"
+  Catalog = "bacula-dirCatalog"
+  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF"
+  File Retention = 80d
+  Job Retention = 1y
+  AutoPrune = "yes"
 }
-
-Autochanger {
-  Name = File12
-  Address = 192.168.56.57               # N.B. Use a fully qualified name here
-  SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
-  Device = FileChgr1-Dev2
-  Media Type = File12
-  Autochanger = File12                 # point to ourself
-  Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
-}
-
-Autochanger {
-  Name = File13
-  Address = 192.168.56.57               # N.B. Use a fully qualified name here
-  SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
-  Device = FileChgr1-Dev3
-  Media Type = File13
-  Autochanger = File13                 # point to ourself
-  Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
-}
-
-# Definition of LTO-4 tape Autochanger device
-#Autochanger {
-#  Name = LTO-4
-#  Do not use "localhost" here
-#  Address = 192.168.56.57              # N.B. Use a fully qualified name here
-#  SDPort = 9103
-#  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"         # password for Storage daemon
-#  Device = LTO-4                     # must be same as Device in Storage daemon
-#  Media Type = LTO-4                 # must be same as MediaType in Storage daemon
-#  Autochanger = LTO-4                # enable for autochanger device
-#  Maximum Concurrent Jobs = 10
-#}
 
 # Generic catalog service
 Catalog {
-  Name = MyCatalog
-  dbname = "bacula"; dbuser = "bacula"; dbpassword = ""
+  Name = "MyCatalog"
+  dbname = "bacula"; dbuser = "bacula"; dbpassword = "1"
+}
+
+Catalog {
+  Name = "bacula-dirCatalog"
+  dbname = "bacula"; dbuser = "bacula"; dbpassword = "1"
+}
+
+# Definition of file Virtual Autochanger device
+Autochanger {
+  Name = "AC-File11"
+  Address = "192.168.56.57"
+  SDPort = "9103"
+  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
+  Device = "AC-FileGr1"
+  Media Type = "File11"
+  Maximum Concurrent Jobs = "10"
+}
+
+Storage {
+  Name = "AC-FileGr1-Dev1"
+  Address = "192.168.56.57"
+  SDPort = "9103"
+  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
+  Device = "AC-FileGr1-Dev1"
+  Media Type = "File11"
+  Maximum Concurrent Jobs = "5"
+  Autochanger = "AC-File11"
+}
+
+Pool {
+  Name = "Default"
+  Pool Type = "Backup"
+}
+
+Pool {
+  Name = "Pool-00-File11"
+  Pool Type = "Backup"
+  Label Format = "Pool-00-File11_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
+  Recycle = "yes"                       # Bacula can automatically recycle Volumes
+  AutoPrune = "yes"                     # Prune expired volumes
+  Volume Retention = 30 days         # one year
+  Maximum Volume Bytes = 500M          # Limit Volume size to something reasonable
+  Maximum Volumes = "10"               # Limit number of Volumes in Pool
+  Storage = "AC-FileGr1-Dev1" 
+}
+
+Pool {
+  Name = "Pool-01-File11"
+  Pool Type = "Backup"
+  Label Format = "Pool-01-File11_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
+  Recycle = "yes"                       # Bacula can automatically recycle Volumes
+  AutoPrune = "yes"                     # Prune expired volumes
+  Volume Retention = 30 days         # one year
+  Maximum Volume Bytes = 500M          # Limit Volume size to something reasonable
+  Maximum Volumes = "10"               # Limit number of Volumes in Pool
+  Storage = "AC-File11" 
+}
+
+Pool {
+  Name = "Pool-02-File11"
+  Pool Type = "Backup"
+  Label Format = "Pool-02-File11_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
+  Recycle = "yes"                       # Bacula can automatically recycle Volumes
+  AutoPrune = "yes"                     # Prune expired volumes
+  Volume Retention = 20 days         # one year
+  Maximum Volume Bytes = 500M         # Limit Volume size to something reasonable
+  Maximum Volumes = "10"               # Limit number of Volumes in Pool
+  Storage = "AC-File11" 
+}
+
+# Scratch pool definition
+Pool {
+  Name = "Scratch"
+  Pool Type = "Backup"
+  Label Format = "Local-"
 }
 
 # Reasonable message delivery -- send most everything to email address
 #  and to the console
 Messages {
-  Name = Standard
+  Name = "Standard"
 #
 # NOTE! If you send to two email or more email addresses, you will need
 #  to replace the %r in the from field (-f part) with a single valid
@@ -330,7 +370,6 @@ Messages {
 #  you'll have to set the FROM address manually, to a single address.
 #  for example, a 'no-reply@mydomain.com', is better since that tends to
 #  tell (most) people that its coming from an automated source.
-
 #
   mailcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: %t %e of %c %l\" %r"
   operatorcommand = "/opt/bacula/bin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: Intervention needed for %j\" %r"
@@ -343,11 +382,9 @@ Messages {
 #          also keep all your messages if they scroll off the console.
 #
   append = "/opt/bacula/log/bacula.log" = all, !skipped
-  catalog = all
+  catalog = "all"
 }
 
-
-#
 # Message delivery for daemon messages (no job).
 Messages {
   Name = Daemon
@@ -357,76 +394,4 @@ Messages {
   append = "/opt/bacula/log/bacula.log" = all, !skipped
 }
 
-# Default pool definition
-Pool {
-  Name = Default
-  Pool Type = Backup
-  Label Format = "Local-"
-  Recycle = yes                       # Bacula can automatically recycle Volumes
-  AutoPrune = yes                     # Prune expired volumes
-  Volume Retention = 365 days         # one year
-  Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
-  Maximum Volumes = 100               # Limit number of Volumes in Pool
-}
-
-# File Pool definition
-Pool {
-  Name = File
-  Pool Type = Backup
-  Label Format = "Local-"
-  Recycle = yes                       # Bacula can automatically recycle Volumes
-  AutoPrune = yes                     # Prune expired volumes
-  Volume Retention = 365 days         # one year
-  Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
-  Maximum Volumes = 100               # Limit number of Volumes in Pool
-}
-
-
-Pool {
-  Name = FullBKP
-  Pool Type = Backup
-  Label Format = "FullBKP_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
-  Recycle = yes                       # Bacula can automatically recycle Volumes
-  AutoPrune = yes                     # Prune expired volumes
-  Volume Retention = 365 days         # one year
-  Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
-  Maximum Volumes = 100               # Limit number of Volumes in Pool
-}
-
-Pool {
-  Name = DifferentialBKP
-  Pool Type = Backup
-  Label Format = "DifferentialBKP_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
-  Recycle = yes                       # Bacula can automatically recycle Volumes
-  AutoPrune = yes                     # Prune expired volumes
-  Volume Retention = 365 days         # one year
-  Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
-  Maximum Volumes = 100               # Limit number of Volumes in Pool
-}
-
-Pool {
-  Name = IncrementalBKP
-  Pool Type = Backup
-  Label Format = "IncrementalBKP_${Client}_${JobId}_${Year}-${Month:p/2/0/r}-${Day:p/2/0/r}T${Hour:p/2/0/r}.${Minute:p/2/0/r}.${Second:p/2/0/r}"
-  Recycle = yes                       # Bacula can automatically recycle Volumes
-  AutoPrune = yes                     # Prune expired volumes
-  Volume Retention = 365 days         # one year
-  Maximum Volume Bytes = 50G          # Limit Volume size to something reasonable
-  Maximum Volumes = 100               # Limit number of Volumes in Pool
-}
-
-# Scratch pool definition
-Pool {
-  Name = Scratch
-  Pool Type = Backup
-  Label Format = "Local-"
-}
-
-#
-# Restricted console used by tray-monitor to get the status of the director
-#
-Console {
-  Name = bacula-mon
-  Password = "UCyA6l1ABzL2osyuKyCNGNGPl2HQT/Fat+P3pZcfsKlP"
-  CommandACL = status, .status
-}
+@|"find /etc/bacula/conf.d -name '*.conf' -type f -exec echo @{} \;"
