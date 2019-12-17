@@ -14,11 +14,6 @@
 # License: BSD 2-Clause; see file LICENSE-FOSS
 #
 
-# Defintions:
-# 01 = Backup Full
-# 02 = Backup Differential
-# 03 = Backup Incremental
-
 Storage {                             # definition of myself
   Name = bacula-sd
   SDPort = 9103                  # Director's port
@@ -52,16 +47,15 @@ Director {
 # Define a Virtual autochanger
 Autochanger {
   Name = AC-FileGr1
-  Device = AC-01-FileGr1-Dev1
-  Device = AC-02-FileGr1-Dev2
-  Device = AC-03-FileGr1-Dev3
-  Device = Restore-AC-FileGr1
+  Device = AC-FileGr1-Dev1
+  Device = AC-FileGr1-Dev2
+  Device = AC-FileGr1-Dev3
   Changer Command = ""
   Changer Device = /dev/null
 }
 
 Device {
-  Name = AC-01-FileGr1-Dev1
+  Name = AC-FileGr1-Dev1
   Media Type = File11
   Archive Device = /opt/bacula/my/bkp/FullBackupPool
   LabelMedia = yes;
@@ -75,7 +69,7 @@ Device {
 }
 
 Device {
-  Name = AC-02-FileGr1-Dev2
+  Name = AC-FileGr1-Dev2
   Media Type = File11
   Archive Device = /opt/bacula/my/bkp/DifferentialBackupPool
   LabelMedia = yes;                   # lets Bacula label unlabeled media
@@ -89,7 +83,7 @@ Device {
 }
 
 Device {
-  Name = AC-03-FileGr1-Dev3
+  Name = AC-FileGr1-Dev3
   Media Type = File11
   Archive Device = /opt/bacula/my/bkp/IncrementalBackupPool
   LabelMedia = yes;                   # lets Bacula label unlabeled media
@@ -102,20 +96,6 @@ Device {
   Drive Index = 0
 }
 
-Device {
-  Name = Restore-AC-FileGr1
-  Media Type = File11
-  Archive Device = /opt/bacula/working
-  LabelMedia = yes;
-  Random Access = Yes;
-  AutomaticMount = yes;
-  RemovableMedia = no;
-  AlwaysOpen = no;
-  AutoSelect = no
-  Autochanger = yes
-  Drive Index = 3
-}
-
 # Define a Virtual autochanger
 # Example of a second Autochanger.
 # The Archive Device, Name, Media Type should be different for each Autochanger group
@@ -124,7 +104,6 @@ Device {
 #  Device = AC-FileGr2-Dev1
 #  Device = AC-FileGr2-Dev2
 #  Device = AC-FileGr2-Dev3
-#  Device = Restore-AC-FileGr2
 #  Changer Command = ""
 #  Changer Device = /dev/null
 #}
@@ -169,20 +148,6 @@ Device {
 #  Maximum Concurrent Jobs = 5
 #  Autochanger = yes
 #  Drive Index = 0
-#}
-
-#Device {
-#  Name = Restore-AC-FileGr2
-#  Media Type = File12
-#  Archive Device = /tmp/bacula-restores
-#  LabelMedia = yes;
-#  Random Access = Yes;
-#  AutomaticMount = yes;
-#  RemovableMedia = no;
-#  AlwaysOpen = no;
-#  AutoSelect = no
-#  Autochanger = yes
-#  Drive Index = 3
 #}
 
 # Send all messages to the Director,
