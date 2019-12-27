@@ -16,22 +16,21 @@
 #
 
 Director {                            # define myself
-  Name = bacula-dir
+  Name = 2c03ae5632f1-dir
   DIRport = 9101                # where we listen for UA connections
   QueryFile = "/opt/bacula/scripts/query.sql"
   WorkingDirectory = "/opt/bacula/working"
   PidDirectory = "/opt/bacula/working"
   Maximum Concurrent Jobs = 20
-  Password = "75rfxeAId8Hxtmtm9Mn7EC/Bvr9Ykol+lylKPz7sF68Q"         # Console password
+  Password = "Sl2anBXRV+zU9UwVaA6Bk7VoLbCJ3S85ozslTP6llWt4"         # Console password
   Messages = Daemon
-  StatisticsRetention = 5y
 }
 
 JobDefs {
   Name = "DefaultJob"
   Type = Backup
   Level = Incremental
-  Client = bacula-fd
+  Client = 2c03ae5632f1-fd
   FileSet = "Full Set"
   Schedule = "WeeklyCycle"
   Storage = File1
@@ -53,7 +52,7 @@ Job {
 
 #Job {
 #  Name = "BackupClient2"
-#  Client = bacula2-fd
+#  Client = 2c03ae5632f12-fd
 #  JobDefs = "DefaultJob"
 #}
 
@@ -91,7 +90,7 @@ Job {
 Job {
   Name = "RestoreFiles"
   Type = Restore
-  Client=bacula-fd
+  Client=2c03ae5632f1-fd
   Storage = File1
 # The FileSet and Pool directives are not used by Restore Jobs
 # but must not be removed
@@ -171,11 +170,11 @@ FileSet {
 
 # Client (File Services) to backup
 Client {
-  Name = bacula-fd
-  Address = bacula
+  Name = 2c03ae5632f1-fd
+  Address = 2c03ae5632f1
   FDPort = 9102
   Catalog = MyCatalog
-  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF"          # password for FileDaemon
+  Password = "r6AMsYqqSHJDyH1Frg/YgYk8WKa/IkAWfca/b/7q1wFJ"          # password for FileDaemon
   File Retention = 60 days            # 60 days
   Job Retention = 6 months            # six months
   AutoPrune = yes                     # Prune expired Jobs/Files
@@ -186,11 +185,11 @@ Client {
 #  You should change Name, Address, and Password before using
 #
 #Client {
-#  Name = bacula2-fd
-#  Address = bacula2
+#  Name = 2c03ae5632f12-fd
+#  Address = 2c03ae5632f12
 #  FDPort = 9102
 #  Catalog = MyCatalog
-#  Password = "0il/RiL+dpjxD8tigziSEF4u3eH9tiU7uDbEruUzAcSF2"        # password for FileDaemon 2
+#  Password = "r6AMsYqqSHJDyH1Frg/YgYk8WKa/IkAWfca/b/7q1wFJ2"        # password for FileDaemon 2
 #  File Retention = 60 days           # 60 days
 #  Job Retention = 6 months           # six months
 #  AutoPrune = yes                    # Prune expired Jobs/Files
@@ -201,9 +200,9 @@ Client {
 Autochanger {
   Name = File1
 # Do not use "localhost" here
-  Address = bacula                # N.B. Use a fully qualified name here
+  Address = 2c03ae5632f1                # N.B. Use a fully qualified name here
   SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
+  Password = "8aiPDWh9LYxZI/gjoeawJLE+icgHqCVgsEOW0OHiOY+w"
   Device = FileChgr1
   Media Type = File1
   Maximum Concurrent Jobs = 10        # run up to 10 jobs a the same time
@@ -215,9 +214,9 @@ Autochanger {
 Autochanger {
   Name = File2
 # Do not use "localhost" here
-  Address = bacula                # N.B. Use a fully qualified name here
+  Address = 2c03ae5632f1                # N.B. Use a fully qualified name here
   SDPort = 9103
-  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"
+  Password = "8aiPDWh9LYxZI/gjoeawJLE+icgHqCVgsEOW0OHiOY+w"
   Device = FileChgr2
   Media Type = File2
   Autochanger = File2                 # point to ourself
@@ -228,9 +227,9 @@ Autochanger {
 #Autochanger {
 #  Name = LTO-4
 #  Do not use "localhost" here
-#  Address = bacula               # N.B. Use a fully qualified name here
+#  Address = 2c03ae5632f1               # N.B. Use a fully qualified name here
 #  SDPort = 9103
-#  Password = "tgw7QKL+Tc/4rts0PCt+keic7sF6F1BrjYpO2fmj962z"         # password for Storage daemon
+#  Password = "8aiPDWh9LYxZI/gjoeawJLE+icgHqCVgsEOW0OHiOY+w"         # password for Storage daemon
 #  Device = LTO-4                     # must be same as Device in Storage daemon
 #  Media Type = LTO-4                 # must be same as MediaType in Storage daemon
 #  Autochanger = LTO-4                # enable for autochanger device
@@ -318,7 +317,7 @@ Pool {
 # Restricted console used by tray-monitor to get the status of the director
 #
 Console {
-  Name = bacula-mon
-  Password = "UCyA6l1ABzL2osyuKyCNGNGPl2HQT/Fat+P3pZcfsKlP"
+  Name = 2c03ae5632f1-mon
+  Password = "y6qK7VummT0021WfbMpWu6arL9zV3M25+cOPkpjxvyxy"
   CommandACL = status, .status
 }
